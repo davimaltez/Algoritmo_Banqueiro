@@ -49,14 +49,14 @@ int **alocar_matriz(int linhas, int colunas) {
             
             for (int j = 0; j < i; j++) {
 
-                free(mat[j]);
+                free(matriz[j]);
             }
-            free(mat);
+            free(matriz);
             return NULL;
         }
     }
 
-    return mat;
+    return matriz;
 }
 
 void liberar_matriz(int **mat, int linhas) {
@@ -76,6 +76,94 @@ void liberar_banco(Banco *banco) {
     liberar_matriz(banco->need, banco->num_clientes);
 }
 
+
+int ler_clientes(Banco * banco, char * nome_arquivo){
+   
+    FILE * arquivo_clientes = fopen(nome_arquivo,"r");
+    if(arquivo_clientes == NULL){
+        fprintf(stderr,"Erro: nao foi possivel abrir o arquivo %s\n", nome_arquivo);
+        return 0;
+    }
+
+    //contagem de clientes
+    char linha[256];
+    while(fgets(linha,sizeof(linha),arquivo_clientes) != NULL){
+
+        linha[strcspn(linha, "\n")] = '\0';
+
+        if(linha[0] != '\0'){
+
+            banco->num_clientes++;
+        }
+    }
+
+    if(banco->num_clientes == 0){
+        fprintf(stderr,"Erro: arquivo %s esta vazio\n", nome_arquivo);
+        fclose(arquivo_clientes);
+        return 0;
+    }
+
+    rewind(arquivo_clientes);
+
+    banco->max = alocar_matriz(banco->num_clientes, banco->num_recursos);
+    banco->allocation = alocar_matriz(banco->num_clientes, banco->num_recursos);
+    banco->need = alocar_matriz(banco->num_clientes, banco->num_recursos);
+
+    if (banco->max == NULL || banco->allocation == NULL || banco->need == NULL) {
+        fprintf(stderr, "Erro: falha ao alocar memoria para as matrizes\n");
+        fclose(arquivo_clientes);
+        return 0;
+    }
+
+    //Leitura dos números
+    int i = 0;      
+
+    while (fgets(linha, sizeof(linha), arquivo_clientes) != NULL) {
+
+        linha[strcspn(linha, "\n")] = '\0';
+
+        if (linha[0] == '\0') {
+            continue; 
+        }
+
+        int j = 0; // indice do recurso (coluna)
+
+        char *numero = strtok(linha, ",");
+
+        while (numero != NULL) {
+
+            if (!verificar_numero(numero)) {
+                fprintf(stderr, "Erro: %s possui valor invalido '%s'\n", nome_arquivo, numero);
+                fclose(arquivo_clientes);
+                return 0;
+            }
+
+            if (j >= banco->num_recursos) {
+                fprintf(stderr, "Erro: %s possui cliente com mais de %d valores (quantidade de recursos passada na execucao)\n", nome_arquivo, banco->num_recursos);
+                fclose(arquivo_clientes);
+                return 0;
+            }
+
+            banco->max[i][j] = atoi(numero);
+            banco->need[i][j] = banco->max[i][j]; // no inicio ninguem tem nada
+
+            j++;
+            numero = strtok(NULL, ",");
+        }
+
+        if (j != banco->num_recursos) {
+            fprintf(stderr, "Erro: %s possui cliente com %d valores, mas foram passados %d recursos na execucao\n", nome_arquivo, j, banco->num_recursos);
+            fclose(arquivo_clientes);
+            return 0;
+        }
+
+        i++;
+    }
+
+    fclose(arquivo_clientes);
+    return 1;
+}
+
 int main(int argc, char *argv[]) {
 
     Banco banco = {0};
@@ -83,16 +171,6 @@ int main(int argc, char *argv[]) {
     // Usuario passou pelo menos um recurso
     if (argc < 2) {
         fprintf(stderr, "Erro: informe a quantidade de instancias de cada recurso. Exemplo: ./banker 10 5 7\n");
-        return 1;
-    }
-
-    int num_recursos = argc - 1;
-
-    // Aloca o vetor available dinamicamente de acordo com quantos argumentos vieram
-    int *available = (int *) malloc(num_recursos * sizeof(int));
-
-    if (available == NULL) {
-        printf("Erro ao alocar memoria para available.\n");
         return 1;
     }
 
@@ -111,13 +189,18 @@ int main(int argc, char *argv[]) {
         if (!verificar_numero(argv[i + 1])) {
 
             fprintf(stderr, "Erro: argumento invalido '%s'. Use apenas inteiros nao negativos.\n", argv[i + 1]);            free(available);
+            liberar_banco(&banco);
             return 1;
 
         }
 
-        available[i] = atoi(argv[i + 1]);
+        banco.available[i] = atoi(argv[i + 1]);
     }
 
+    if (!ler_clientes(&banco, "customer.txt")) {
+        liberar_banco(&banco);
+        return 1;
+    }
 
     liberar_banco(&banco);
     return 0;
