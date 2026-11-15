@@ -164,6 +164,42 @@ int ler_clientes(Banco * banco, char * nome_arquivo){
     return 1;
 }
 
+
+void imprimir_estado(Banco * banco, FILE * saida){
+
+    fprintf(saida, "MAXIMUM | ALLOCATION | NEED\n");
+
+    for(int i = 0; i < banco->num_clientes; i++){
+        for(int j = 0; j < banco->num_recursos; j++){
+            fprintf(saida, "%d ",banco->max[i][j]);
+        }
+        fprintf(saida, "| ");
+
+        for(int j = 0; j < banco->num_recursos; j++){
+            fprintf(saida, "%d ",banco->allocation[i][j]);
+        }
+        fprintf(saida, "| ");
+
+    for(int j = 0; j < banco->num_recursos; j++){
+        if(j > 0){
+            fprintf(saida, " ");
+        }
+        fprintf(saida, "%d", banco->need[i][j]);
+    }
+        fprintf(saida,"\n");
+    }
+
+    fprintf(saida,"AVAILABLE ");
+    for(int j = 0; j < banco->num_recursos; j++){
+
+        if(j > 0){
+            fprintf(saida, " ");
+        }
+        fprintf(saida, "%d",banco->available[j]);
+    }
+    fprintf(saida,"\n");
+}
+
 int main(int argc, char *argv[]) {
 
     Banco banco = {0};
@@ -188,7 +224,8 @@ int main(int argc, char *argv[]) {
 
         if (!verificar_numero(argv[i + 1])) {
 
-            fprintf(stderr, "Erro: argumento invalido '%s'. Use apenas inteiros nao negativos.\n", argv[i + 1]);            free(available);
+            fprintf(stderr, "Erro: argumento invalido '%s'. Use apenas inteiros nao negativos.\n", argv[i + 1]);            
+            free(banco.available);
             liberar_banco(&banco);
             return 1;
 
@@ -201,6 +238,13 @@ int main(int argc, char *argv[]) {
         liberar_banco(&banco);
         return 1;
     }
+
+    FILE * saida = fopen("result.txt","a");
+    if(saida == NULL){
+        fprintf(stderr,"Erro: nao foi possivel abrir o arquivo result.txt\n");
+        return 0;
+    }
+    imprimir_estado(&banco,saida);
 
     liberar_banco(&banco);
     return 0;
