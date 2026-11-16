@@ -7,7 +7,7 @@
 
 
 int cabe_ou_nao(int *pedido, int *limite, int tamanho);
-int simulador_estado_seguro(Banco *banco);
+int simuladar_estado_seguro(Banco *banco);
 
 void imprimir_vetor(FILE * saida, int * vetor, int tamanho);
 void fazer_pedido(Banco * banco, int cliente, int * pedido, FILE * saida);
