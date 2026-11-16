@@ -43,6 +43,7 @@ int simular_estado_seguro(Banco * banco){
 
         for(int i = 0; i < banco->num_clientes; i++){
 
+            //se o cliente i ainda não terminou e o que ele ainda precisa cabe no cofre de rascunho
             if(finish[i] == 0 && cabe_ou_nao(banco->need[i], copia_available, banco->num_recursos)){
 
                 // o cliente termina e devolve tudo o que tinha
@@ -68,4 +69,67 @@ int simular_estado_seguro(Banco * banco){
     free(finish);
 
     return seguro;
+}
+
+void imprimir_vetor(FILE * saida, int * vetor, int tamanho){
+
+    for(int j = 0; j < tamanho; j++){
+        if(j > 0){
+            fprintf(saida, " ");
+        }
+        fprintf(saida, "%d", vetor[j]);
+    }
+}
+
+void fazer_pedido(Banco * banco, int cliente, int * pedido, FILE * saida){
+
+    int m = banco->num_recursos;
+
+
+    // O pedido passa do que o cliente ainda pode pedir?
+    if(!cabe_ou_nao(pedido, banco->need[cliente], m)){
+
+        fprintf(saida, "The customer %d request ", cliente);
+        imprimir_vetor(saida, pedido, m);
+        fprintf(saida, " was denied because exceed its maximum allocation\n");
+        return;
+    }
+
+    // Verifica se tem isso tudo no cofre agora
+    if(!cabe_ou_nao(pedido, banco->available, m)){
+        
+        fprintf(saida, "The resources ");
+        imprimir_vetor(saida, banco->available, m);
+        fprintf(saida, " are not enough to customer %d request ", cliente);
+        imprimir_vetor(saida, pedido, m);
+        fprintf(saida, "\n");
+        return;
+    }
+
+    // Aplica o pedido
+    for(int j = 0; j < m; j++){
+        banco->available[j] -= pedido[j];
+        banco->allocation[cliente][j] += pedido[j];
+        banco->need[cliente][j] -= pedido[j];
+    }
+
+    // O estado com o pedido aplicado e seguro?
+    if(simular_estado_seguro(banco)){
+        fprintf(saida, "Allocate to customer %d the resources ", cliente);
+        imprimir_vetor(saida, pedido, m);
+        fprintf(saida, "\n");
+    }
+    else{
+        //Inseguro: desfaz tudo, com os sinais trocados
+        for(int j = 0; j < m; j++){
+
+            banco->available[j] += pedido[j];
+            banco->allocation[cliente][j] -= pedido[j];
+            banco->need[cliente][j] += pedido[j];
+        }
+
+        fprintf(saida, "The customer %d request ", cliente);
+        imprimir_vetor(saida, pedido, m);
+        fprintf(saida, " was denied because result in an unsafe state\n");
+    }
 }
