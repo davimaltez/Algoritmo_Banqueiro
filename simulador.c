@@ -97,7 +97,7 @@ void fazer_pedido(Banco * banco, int cliente, int * pedido, FILE * saida){
 
     // Verifica se tem isso tudo no cofre agora
     if(!cabe_ou_nao(pedido, banco->available, m)){
-        
+
         fprintf(saida, "The resources ");
         imprimir_vetor(saida, banco->available, m);
         fprintf(saida, " are not enough to customer %d request ", cliente);
@@ -132,4 +132,30 @@ void fazer_pedido(Banco * banco, int cliente, int * pedido, FILE * saida){
         imprimir_vetor(saida, pedido, m);
         fprintf(saida, " was denied because result in an unsafe state\n");
     }
+}
+
+
+void fazer_devolucao(Banco * banco, int cliente, int * devolucao, FILE * saida){
+
+    int m = banco->num_recursos;
+
+    // Verifica se o cliente esta devolvendo mais do que tem
+    if(!cabe_ou_nao(devolucao, banco->allocation[cliente], m)){
+
+        fprintf(saida, "The customer %d release ", cliente);
+        imprimir_vetor(saida, devolucao, m);
+        fprintf(saida, " was denied because exceed its allocation\n");
+        return;
+    }
+
+    // Faz a devolução
+    for(int j = 0; j < m; j++){
+        banco->available[j] += devolucao[j];
+        banco->allocation[cliente][j] -= devolucao[j];
+        banco->need[cliente][j] += devolucao[j];
+    }
+
+    fprintf(saida, "Release from customer %d the resources ", cliente);
+    imprimir_vetor(saida, devolucao, m);
+    fprintf(saida, "\n");
 }

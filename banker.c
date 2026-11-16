@@ -66,8 +66,7 @@ int main(int argc, char *argv[]) {
 
         if (!verificar_numero(argv[i + 1])) {
 
-            fprintf(stderr, "Erro: argumento invalido '%s'. Use apenas inteiros nao negativos.\n", argv[i + 1]);            
-            free(banco.available);
+            fprintf(stderr, "Erro: argumento invalido '%s'. Use apenas inteiros nao negativos.\n", argv[i + 1]);
             liberar_banco(&banco);
             return 1;
 
@@ -75,19 +74,30 @@ int main(int argc, char *argv[]) {
 
         banco.available[i] = atoi(argv[i + 1]);
     }
+    
 
+    //Leitura de customer.txt
     if (!ler_clientes(&banco, "customer.txt")) {
         liberar_banco(&banco);
         return 1;
     }
 
-    FILE * saida = fopen("result.txt","a");
+    FILE * saida = fopen("result.txt","w");
+
     if(saida == NULL){
         fprintf(stderr,"Erro: nao foi possivel abrir o arquivo result.txt\n");
+        liberar_banco(&banco);
         return 0;
     }
-    imprimir_estado(&banco,saida);
+    
+    // Leitura e execucao do commands.txt
+    if (!processar_comandos(&banco, "commands.txt", saida)) {
+        fclose(saida);
+        liberar_banco(&banco);
+        return 1;
+    }
 
+    fclose(saida);
     liberar_banco(&banco);
     return 0;
 }

@@ -111,3 +111,116 @@ int ler_clientes(Banco * banco, char * nome_arquivo){
     fclose(arquivo_clientes);
     return 1;
 }
+
+
+int processar_comandos(Banco * banco, char * nome_arquivo, FILE * saida){
+
+    FILE * arquivo_comandos = fopen(nome_arquivo, "r");
+
+    if(arquivo_comandos == NULL){
+        fprintf(stderr, "Erro: nao foi possivel abrir o arquivo %s\n", nome_arquivo);
+        return 0;
+    }
+
+    int m = banco->num_recursos;
+
+    // Criei um vetor para ser reaproveitado em todos os comandos RQ e RL
+    int * vetor_comandos = (int *) malloc(m * sizeof(int));
+
+    if(vetor_comandos == NULL){
+        fprintf(stderr, "Erro: falha ao alocar memoria para os comandos\n");
+        fclose(arquivo_comandos);
+        return 0;
+    }
+
+    char linha[256];
+
+    while(fgets(linha, sizeof(linha), arquivo_comandos) != NULL){
+
+        linha[strcspn(linha, "\n")] = '\0';
+
+        if(linha[0] == '\0'){
+            continue;
+        }
+
+        char * comando = strtok(linha, " ");
+
+        // Comando de imprimir o Estado
+        if(strcmp(comando, "*") == 0){
+
+            if(strtok(NULL, " ") != NULL){
+
+                fprintf(stderr, "Erro: %s possui o comando * com valores a mais\n", nome_arquivo);
+                free(vetor_comandos);
+                fclose(arquivo_comandos);
+                return 0;
+            }
+
+            imprimir_estado(banco, saida);
+            continue;
+        }
+
+        if(strcmp(comando, "RQ") != 0 && strcmp(comando, "RL") != 0){
+
+            fprintf(stderr, "Erro: %s possui comando desconhecido '%s'\n", nome_arquivo, comando);
+            free(vetor_comandos);
+            fclose(arquivo_comandos);
+            return 0;
+        }
+
+        // numero do cliente
+        char * texto = strtok(NULL, " ");
+        if(!verificar_numero(texto)){
+
+            fprintf(stderr, "Erro: %s possui comando %s sem um numero de cliente valido\n", nome_arquivo, comando);
+            free(vetor_comandos);
+            fclose(arquivo_comandos);
+            return 0;
+        }
+
+        int cliente = atoi(texto);
+        if(cliente >= banco->num_clientes){
+
+            fprintf(stderr, "Erro: %s possui o cliente %d, mas so existem %d clientes\n", nome_arquivo, cliente, banco->num_clientes);
+            free(vetor_comandos);
+            fclose(arquivo_comandos);
+            return 0;
+        }
+
+        // os m valores do pedido ou da devolucao
+        for(int j = 0; j < m; j++){
+            texto = strtok(NULL, " ");
+
+            if(!verificar_numero(texto)){
+                fprintf(stderr, "Erro: %s possui comando %s do cliente %d com valores invalidos ou faltando (esperado %d valores)\n", nome_arquivo, comando, cliente, m);
+                free(vetor_comandos);
+                fclose(arquivo_comandos);
+                return 0;
+            }
+
+            vetor_comandos[j] = atoi(texto);
+        }
+
+        // nao pode sobrar valor
+        if(strtok(NULL, " ") != NULL){
+            fprintf(stderr, "Erro: %s possui comando %s do cliente %d com mais de %d valores\n", nome_arquivo, comando, cliente, m);
+            free(vetor_comandos);
+            fclose(arquivo_comandos);
+            return 0;
+        }
+
+        if(strcmp(comando, "RQ") == 0){
+
+            fazer_pedido(banco, cliente, vetor_comandos, saida);
+        }
+
+        else{
+
+            fazer_devolucao(banco, cliente, vetor_comandos, saida);
+        }
+    }
+
+    free(vetor_comandos);
+    fclose(arquivo_comandos);
+    return 1;
+}
